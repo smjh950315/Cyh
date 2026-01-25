@@ -1,0 +1,66 @@
+#pragma once
+#include "timespan.h"
+namespace cyh {
+	struct datetime {
+		static datetime now();
+		static datetime from_struct_tm(void* _tmStruct, cyh::time::TIME_TYPE _type);
+		static bool parse(datetime& _out, const std::string_view& _text, const std::string_view& _format = "yyyy-MM-dd HH:mm:ss");
+		const int millisecond{};
+		cyh::time::time time{};
+		cyh::time::date date{};
+		const int weekday{};
+		const int yearday{};
+		const int isdst{};
+		const int64 timestamp{};
+		const int64 epoch_nano{};
+		// datetime::TIME_TYPE;
+		const int timetype{ cyh::time::TIME_TYPE_LOCAL };
+		datetime();
+		datetime(const int64 _timestamp);
+		datetime(int year, int month, int day, int _timetype = cyh::time::TIME_TYPE_LOCAL);
+		datetime(int year, int month, int day, int hour, int minute, int second, int _timetype = cyh::time::TIME_TYPE_LOCAL);
+		datetime(const cyh::time::date& _date, const cyh::time::time& _time);
+		std::string to_string(const std::string_view& _format = "yyyy-MM-dd HH:mm:ss") const;
+		datetime(const datetime& dt);
+		datetime(datetime&& dt) noexcept;
+		datetime& operator=(const datetime& dt);
+		datetime& operator=(datetime&& dt) noexcept;
+		datetime get_timetype_of(cyh::time::TIME_TYPE _type) const;
+		bool write_tm_struct(void* _tmStruct) const;
+	};
+	struct ctimestamp {
+		int64_t timestamp{};
+		int64_t fraction{};
+		static ctimestamp now();
+		ctimestamp() = default;
+		ctimestamp(int64_t _timestamp);
+		ctimestamp(int64_t _timestamp, int64 _fraction);
+		ctimestamp(int year, int month, int day, cyh::time::TIME_TYPE _type);
+		ctimestamp(int year, int month, int day, int hour, int minute, int second, cyh::time::TIME_TYPE _type);
+		ctimestamp(const ctimestamp& dt);
+		ctimestamp(ctimestamp&& dt) noexcept;
+		ctimestamp& operator=(const ctimestamp& dt);
+		ctimestamp& operator=(ctimestamp&& dt) noexcept;
+		int get_year() const;
+		int get_month() const;
+		int get_day() const;
+		int get_hour() const;
+		int get_minute() const;
+		int get_second() const;
+		int get_millisecond() const;
+		int64 get_epoch_nano() const;
+		cyh::time::date get_date(cyh::time::TIME_TYPE timeType) const;
+		cyh::time::time get_time(cyh::time::TIME_TYPE timeType) const;
+		datetime get_datetime(cyh::time::TIME_TYPE timeType) const;
+	};
+	bool operator==(const ctimestamp& lhs, const ctimestamp& rhs);
+	bool operator!=(const ctimestamp& lhs, const ctimestamp& rhs);
+	bool operator<(const ctimestamp& lhs, const ctimestamp& rhs);
+	bool operator<=(const ctimestamp& lhs, const ctimestamp& rhs);
+	bool operator>(const ctimestamp& lhs, const ctimestamp& rhs);
+	bool operator>=(const ctimestamp& lhs, const ctimestamp& rhs);
+	timespan operator-(const ctimestamp& lhs, const ctimestamp& rhs);
+	timespan operator-(const datetime& lhs, const datetime& rhs);
+	datetime operator+(const datetime& lhs, const timespan& rhs);
+	datetime operator-(const datetime& lhs, const timespan& rhs);
+};
