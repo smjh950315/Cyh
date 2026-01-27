@@ -87,7 +87,7 @@ namespace cyh {
 			// unsafe
 			[[nodiscard]] int terminate();
 			// get inner exception, null if no exception
-			ref<std::exception> get_inner_exception() const;
+			std::exception_ptr get_inner_exception() const;
 		};
 		class task_impl final {
 			cyh::details::thread_handler m_thread_handler{};
@@ -113,7 +113,7 @@ namespace cyh {
 			bool is_finished() const;
 			bool get_result(const ref<reference>& ref);
 			// get inner exception, null if no exception
-			ref<std::exception> get_inner_exception() const;
+			std::exception_ptr get_inner_exception() const;
 		};
 	};
 	template<class T>
@@ -141,7 +141,7 @@ namespace cyh {
 		void start() override;
 		void cancel(bool force_kill = false) override;
 		// get inner exception, null if no exception
-		ref<std::exception> get_inner_exception() const;
+		std::exception_ptr get_inner_exception() const;
 
 		static ref<task_<T>> run(const std::function<T(const ref<bool>&)>& pfunc, const ref<bool>& start_flag = null, const ref<bool>& termainate_flag = null);
 	};
@@ -235,7 +235,7 @@ namespace cyh {
 	template<class T>
 	void task_<T>::cancel(bool force_kill) { if (!this->m_impl.empty()) this->m_impl->cancel(force_kill); }
 	template<class T>
-	ref<std::exception> task_<T>::get_inner_exception() const { return this->m_impl.empty() ? ref<std::exception>{} : this->m_impl->get_inner_exception(); }
+	std::exception_ptr task_<T>::get_inner_exception() const { return this->m_impl.empty() ? std::exception_ptr{nullptr} : this->m_impl->get_inner_exception(); }
 	template<class T>
 	ref<task_<T>> task_<T>::run(const std::function<T(const ref<bool>&)>& pfunc, const ref<bool>& start_flag, const ref<bool>& termainate_flag) {
 		task_<T> t{ pfunc, start_flag, termainate_flag };

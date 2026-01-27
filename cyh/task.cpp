@@ -4,6 +4,7 @@
 #else
 #include <pthread.h>
 #endif
+#include <cyh/console.hpp>
 namespace cyh::details {
 
 	inline void _wait_millis(int millis) {
@@ -179,16 +180,9 @@ namespace cyh::details {
 		}
 	}
 
-	ref<std::exception> thread_handler::get_inner_exception() const
+	std::exception_ptr thread_handler::get_inner_exception() const
 	{
-		if (m_inner_exception) {
-			try {
-				std::rethrow_exception(m_inner_exception);
-			} catch (const std::exception& ex) {
-				return make_ref(ex);
-			}
-		}
-		return {};
+		return m_inner_exception;
 	}
 
 	task_impl::task_impl()
@@ -286,7 +280,7 @@ namespace cyh::details {
 		return true;
 	}
 
-	ref<std::exception> task_impl::get_inner_exception() const
+	std::exception_ptr task_impl::get_inner_exception() const
 	{
 		return this->m_thread_handler.get_inner_exception();
 	}
