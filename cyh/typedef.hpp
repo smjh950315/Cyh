@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <climits>
-
+#include <cstring>
 #ifdef _MSVC_LANG
 #pragma warning (push)
 #pragma warning (disable: 4068)
@@ -483,9 +483,9 @@ namespace cyh {
 	}
 
 	template<class T, size_t _Max = cyh::type::array_length_v<T>>
-	void write_char_array(T& _arr, const char* _src) requires (std::is_bounded_array_v<T>)
+	void write_char_array(T& _arr, const char* _src) requires (std::is_bounded_array_v<T> && cyh::type::array_length_v<T> != 0)
 	{
-		strncpy((char*)_arr, _src, _Max - 1);
+		strncpy((char*)_arr, _src, cyh::type::array_length_v<T> - 1);
 		((char*)_arr)[_Max - 1] = '\0';
 	}
 };
