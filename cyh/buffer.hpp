@@ -3,6 +3,47 @@
 #include "reference.hpp"
 #include <cyh/console.hpp>
 namespace cyh {
+
+	template<size_t _MaxLength>
+	struct cstr_
+	{
+		char data[_MaxLength + 1]{};
+		cstr_() {}
+		cstr_(const char* _cstr) 
+		{
+			write_char_array(data, _cstr);
+		}
+		cstr_(const std::string& _str) : cstr_<_MaxLength>(_str.c_str()) {}
+		template<size_t _L2>
+		cstr_(const cstr_<_L2>& _other)
+		{
+			MemoryHelper::Copy<char>(data, _other.data, std::min(_MaxLength, _L2));
+		}
+		template<size_t _L2>
+		cstr_(cstr_<_L2>&& _other) noexcept
+		{
+			MemoryHelper::Copy<char>(data, _other.data, std::min(_MaxLength, _L2));
+		}
+		template<size_t _L2>
+		cstr_<_MaxLength>& operator=(const cstr_<_L2>& _other)
+		{
+			MemoryHelper::Copy<char>(data, _other.data, std::min(_MaxLength, _L2));
+			return *this;
+		}
+		template<size_t _L2>
+		cstr_<_MaxLength>& operator=(cstr_<_L2>&& _other) noexcept
+		{
+			MemoryHelper::Copy<char>(data, _other.data, std::min(_MaxLength, _L2));
+			return *this;
+		}
+		operator std::string() const
+		{
+			return std::string((const char*)data, this->length());
+		}
+		size_t length() const { return xstrlen((const char*)data, _MaxLength); }
+		size_t size() const { return this->length(); }
+	};
+
 	namespace details {
 		struct buffer_layout;
 		struct buffer_callbacks;

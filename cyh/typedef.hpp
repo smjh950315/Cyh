@@ -142,6 +142,14 @@ namespace cyh {
 			struct functor_type_ {
 			using return_type = decltype(std::declval<T>()(std::forward<Args>(std::declval<Args>())...));
 		};
+
+		template<class T>
+		struct array_length_
+		{
+			static constexpr size_t total_size = sizeof(T);
+			static constexpr size_t first_size = sizeof(std::declval<T>()[0]);
+			static constexpr size_t element_count = total_size / first_size;
+		};
 	};
 	namespace trait {
 		template<class T>
@@ -450,23 +458,34 @@ namespace cyh {
 
 		template<class T, typename ... Args>
 		inline constexpr bool is_callableby_v = cyh::details::callableby_<T, Args...>::value;
+	
+		template<class T>
+		inline constexpr size_t array_length_v = cyh::details::array_length_<T>::element_count;
 	};
-
 
 	template<class T>
 	constexpr T* get_ptr(const T& const_ref) { return const_cast<T*>(&const_ref); }
 
 	// get length of c-style string
 	template<typename T>
-	static constexpr nuint xstrlen(const T* _xstr) requires(cyh::type::is_char_v<T>) {
+	static constexpr size_t xstrlen(const T* _xstr, size_t _maxlen = ~size_t{}) requires(cyh::type::is_char_v<T>) {
 		if (_xstr == nullptr)
 			return 0;
-		nuint retVal = 0;
+		size_t retVal = 0;
 		T terminator = static_cast<T>('\0');
 		T* iter = (T*)_xstr;
-		while (*iter != terminator) {
+		size_t len = 0;
+		while ((*iter != terminator) && len++ < _maxlen) 
+		{
 			retVal++; iter++;
 		}
 		return retVal;
+	}
+
+	template<class T, size_t _Max = cyh::type::array_length_v<T>>
+	void write_char_array(T& _arr, const char* _src) requires (std::is_bounded_array_v<T>)
+	{
+		strncpy((char*)_arr, _src, _Max - 1);
+		((char*)_arr)[_Max - 1] = '\0';
 	}
 };
