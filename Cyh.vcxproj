@@ -37,6 +37,7 @@
     <ClInclude Include="cyh\container\my_vec.hpp" />
     <ClInclude Include="cyh\buffer.hpp" />
     <ClInclude Include="cyh\bstream.hpp" />
+    <ClInclude Include="cyh\container\ndarray.hpp" />
     <ClInclude Include="cyh\exceptions.hpp" />
     <ClInclude Include="cyh\filesys.hpp" />
     <ClInclude Include="cyh\graphic.hpp" />
@@ -78,6 +79,7 @@
     <ClCompile Include="cyh\buffer.cpp" />
     <ClCompile Include="cyh\console.cpp" />
     <ClCompile Include="cyh\container\matrix.cpp" />
+    <ClCompile Include="cyh\container\ndarray.cpp" />
     <ClCompile Include="cyh\exceptions.cpp" />
     <ClCompile Include="cyh\filesys.cpp" />
     <ClCompile Include="cyh\graphic\image.cpp" />

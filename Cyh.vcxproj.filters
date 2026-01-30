@@ -153,6 +153,9 @@
     <ClInclude Include="cyh\time\timespan.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
+    <ClInclude Include="cyh\container\ndarray.hpp">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cyh\exceptions.cpp">
@@ -210,6 +213,9 @@
       <Filter>來源檔案</Filter>
     </ClCompile>
     <ClCompile Include="cyh\time\time_details.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="cyh\container\ndarray.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
   </ItemGroup>
