@@ -131,8 +131,11 @@ namespace cyh::container::details
 			this->pos.push_back(_r.x);
 		}
 		this->dim = r.size();
-		this->shape_r = d->shape;
-		this->shape_r[shape_r.size() - 1] = 1;
+		for (size_t i = 0; i < d->shape.size(); ++i) {
+			if (i != 0)
+				this->shape_r.push_back(d->shape[i]);
+		}
+		this->shape_r.push_back(1);
 		this->typesize = ts;
 	}
 	nditerator::~nditerator()
