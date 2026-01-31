@@ -8,14 +8,46 @@ namespace cyh::container {
 		using value_type = T;
 	};
 
+	namespace details
+	{
+		template<class T>
+		struct myreverse_iterator
+		{
+			using value_type = T;
+			using iterator = myreverse_iterator;
+			using reference = value_type&;
+			using pointer = value_type*;
+			T* m_ptr{};
+			myreverse_iterator(T* _ptr) : m_ptr(_ptr) {}
+			myreverse_iterator(const myreverse_iterator&) = default;
+			myreverse_iterator(myreverse_iterator&&) noexcept = default;
+			iterator& operator=(const iterator&) = default;
+			iterator& operator=(iterator&&) noexcept = default;
+			const pointer operator->() const { return m_ptr; }
+			pointer operator->() { return m_ptr; }
+			const reference operator*() const { return *m_ptr; }
+			reference operator*() { return *m_ptr; }
+			iterator& operator++() {
+				--m_ptr;
+				return *this;
+			}
+			iterator operator++(int) {
+				return iterator(m_ptr--);
+			}
+			bool operator == (const iterator& rhs) const { return m_ptr == rhs.m_ptr; }
+			bool operator != (const iterator& rhs) const { return m_ptr != rhs.m_ptr; }
+		};
+	};
+
 	template <class T>
 	struct myvec<T, 0> : cyh::buffer {
 		using value_type = T;
+		using reverse_iterator = details::myreverse_iterator<T>;
 		virtual ~myvec() {}
 		constexpr T* begin() const { return this->data(); }
 		constexpr T* end() const { return this->data() + this->size(); }
-		constexpr T* rbegin() const { return this->end() - 1; }
-		constexpr T* rend() const { return this->begin() - 1; }
+		constexpr reverse_iterator rbegin() const { return this->end() - 1; }
+		constexpr reverse_iterator rend() const { return this->begin() - 1; }
 		constexpr T* data() const { return this->data_t<T>(0); }
 		constexpr T& operator[](size_t index) const {
 			if (index >= this->size())
@@ -23,6 +55,17 @@ namespace cyh::container {
 			return this->data()[index];
 		}
 		constexpr myvec() : buffer((T*)nullptr) {}
+		void push_multiple() {}
+		template<class V, class...Vs>
+		void push_multiple(V&& _first, Vs&& ..._other) {
+			this->push_back(std::forward<V>(_first));
+			push_multiple(std::forward<Vs>(_other)...);
+		}
+		template<class U, class V, class...Vs>
+		myvec(U&& _first, V&& _sec, Vs&& ..._other) : buffer((T*)nullptr) {
+			push_back(std::forward<U>(_first));
+			push_multiple(std::forward<V>(_sec), std::forward<Vs>(_other)...);
+		}
 		myvec(const myvec<T, 0>& other) : buffer((T*)nullptr) {
 			buffer& bThis = *this;
 			buffer& bOther = *get_ptr(other);
