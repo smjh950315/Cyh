@@ -22,6 +22,8 @@ namespace cyh::container
 		using vec = std::vector<T>;
 		extern size_t cross(const vec<size_t>& _vec);
 		extern bool is_equal(const vec<size_t>& l, const vec<size_t>& r);
+		extern size_t cross(const myvec<size_t>& _vec);
+		extern bool is_equal(const myvec<size_t>& l, const myvec<size_t>& r);
 		struct array_data
 		{
 			vec<char> data;
@@ -37,10 +39,10 @@ namespace cyh::container
 				shape = _shape;
 			}
 		};
-		struct xditerator
+		struct nditerator
 		{
 			using value_type = char;
-			using iterator = xditerator;
+			using iterator = nditerator;
 			using reference = value_type&;
 			using pointer = value_type*;
 			ref<array_data> data;
@@ -48,12 +50,12 @@ namespace cyh::container
 			vec<MyVec2<size_t>> range;
 			vec<size_t> pos;
 			size_t dim{};
-			xditerator(const xditerator&) = default;
-			xditerator(xditerator&&) noexcept = default;
-			xditerator& operator=(const xditerator&) = default;
-			xditerator& operator=(xditerator&&) = default;
-			xditerator(ref<array_data> d, vec<MyVec2<size_t>> r);
-			~xditerator() {}
+			nditerator(const nditerator&);
+			nditerator(nditerator&&) noexcept;
+			nditerator& operator=(const nditerator&);
+			nditerator& operator=(nditerator&&) noexcept;
+			nditerator(const ref<array_data>& d, const vec<MyVec2<size_t>>& r);
+			~nditerator();
 			const value_type& operator*() const;
 			value_type& operator*();
 			const pointer operator->() const;
@@ -69,7 +71,7 @@ namespace cyh::container
 		ref<details::array_data> m_data;
 		vec<MyVec2<size_t>> m_range{};
 	public:
-		using iterator = details::xditerator;
+		using iterator = details::nditerator;
 		size_t typesize() const override;
 		size_t dims() const override;
 		vec<size_t> shape() const override;

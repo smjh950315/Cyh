@@ -26,8 +26,45 @@ namespace cyh::container::details
 		}
 		return true;
 	}
-
-	static void move_next(xditerator* it)
+	size_t cross(const myvec<size_t>& _vec)
+	{
+		size_t res = 1;
+		for (const auto& v : _vec)
+		{
+			res *= v;
+		}
+		return res;
+	}
+	bool is_equal(const myvec<size_t>& l, const myvec<size_t>& r)
+	{
+		if (l.size() != r.size()) return false;
+		auto begl = l.begin();
+		auto begr = r.begin();
+		auto endr = r.end();
+		while (begr != endr)
+		{
+			if (*begr++ != *begl++)
+				return false;
+		}
+		return true;
+	}
+	static void copy_to_left(nditerator* l, const nditerator* r)
+	{
+		l->data = r->data;
+		l->dim = r->dim;
+		l->pos = r->pos;
+		l->range = r->range;
+		l->shape_r = r->shape_r;
+	}
+	static void move_to_left(nditerator* l, nditerator* r)
+	{
+		l->data = std::move(r->data);
+		l->dim = std::move(r->dim);
+		l->pos = std::move(r->pos);
+		l->range = std::move(r->range);
+		l->shape_r = std::move(r->shape_r);
+	}
+	static void move_next(nditerator* it)
 	{
 		auto itpos = it->pos.rbegin();
 		auto itrange = it->range.rbegin();
@@ -50,11 +87,11 @@ namespace cyh::container::details
 				*itpos = it->range[0].y + 1;
 		}
 	}
-	static size_t get_offset(xditerator* it) 
+	static size_t get_offset(nditerator* it)
 	{
 		auto itPos = it->pos.rbegin();
 		auto itPosE = it->pos.rend();
-		auto& dataShape = it->data->shape;
+		auto& dataShape = it->shape_r;
 		auto itDS = dataShape.rbegin();
 		size_t ratio = 1;
 		size_t offset = 0;
@@ -66,8 +103,25 @@ namespace cyh::container::details
 		}
 		return offset;
 	}
-
-	xditerator::xditerator(ref<array_data> d, vec<MyVec2<size_t>> r)
+	nditerator::nditerator(const nditerator& _other)
+	{
+		copy_to_left(this, &_other);
+	}
+	nditerator::nditerator(nditerator&& _other) noexcept
+	{
+		move_to_left(this, &_other);
+	}
+	nditerator& nditerator::operator=(const nditerator& _other)
+	{
+		copy_to_left(this, &_other);
+		return *this;
+	}
+	nditerator& nditerator::operator=(nditerator&& _other) noexcept
+	{
+		move_to_left(this, &_other);
+		return *this;
+	}
+	nditerator::nditerator(const ref<array_data>& d, const vec<MyVec2<size_t>>& r)
 	{
 		this->data = d; this->range = r;
 		for (const auto& _r : r)
@@ -76,40 +130,48 @@ namespace cyh::container::details
 		}
 		this->dim = r.size();
 		this->shape_r = d->shape;
-		this->shape_r.back() = 1;
+		this->shape_r[shape_r.size() - 1] = 1;
 	}
-	const xditerator::value_type& xditerator::operator*() const
+	nditerator::~nditerator()
+	{
+		this->data = {};
+		this->dim = {};
+		this->pos = {};
+		this->range = {};
+		this->shape_r = {};
+	}
+	const nditerator::value_type& nditerator::operator*() const
 	{
 		return *(this->operator->());
 	}
-	xditerator::value_type& xditerator::operator*()
+	nditerator::value_type& nditerator::operator*()
 	{
 		return *(this->operator->());
 	}
-	const xditerator::pointer xditerator::operator->() const
+	const nditerator::pointer nditerator::operator->() const
 	{
 		return ((iterator*)this)->operator->();
 	}
-	xditerator::pointer xditerator::operator->()
+	nditerator::pointer nditerator::operator->()
 	{
 		return data->data.data() + get_offset(this);
 	}
-	xditerator::iterator& xditerator::operator++()
+	nditerator::iterator& nditerator::operator++()
 	{
 		move_next(this);
 		return *this;
 	}
-	xditerator::iterator xditerator::operator++(int)
+	nditerator::iterator nditerator::operator++(int)
 	{
 		iterator ret = *this;
 		move_next(this);
 		return ret;
 	}
-	bool xditerator::operator == (const iterator& rhs) const
+	bool nditerator::operator == (const iterator& rhs) const
 	{
 		return is_equal(pos, rhs.pos);
 	}
-	bool xditerator::operator != (const iterator& rhs) const
+	bool nditerator::operator != (const iterator& rhs) const
 	{
 		return !(*this == rhs);
 	}
@@ -139,7 +201,7 @@ namespace cyh::container
 		m_range.clear();
 		for (const auto& s : _shape)
 		{
-			m_range.push_back({ size_t(), s - 1});
+			m_range.push_back({ size_t(), s - 1 });
 		}
 	}
 	bool xdarray::crop(xdarray& out, const vec<size_t>& beg, const vec<size_t>& end)
@@ -166,7 +228,7 @@ namespace cyh::container
 	{
 		return iterator(m_data, m_range);
 	}
-	xdarray::iterator xdarray::end() 
+	xdarray::iterator xdarray::end()
 	{
 		auto it = iterator(m_data, m_range);
 		auto itItPos = it.pos.begin();
@@ -190,3 +252,4 @@ namespace cyh::container
 		return ((xdarray*)this)->end();
 	}
 };
+
