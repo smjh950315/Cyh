@@ -19,6 +19,7 @@ set(CMAKE_SHARED_LINKER_FLAGS
 list(APPEND CYHCORE_SRCS
 "simdutf.cpp"
 "cyh/container/matrix.cpp"
+"cyh/container/ndarray.cpp"
 "cyh/graphic/image.cpp"
 "cyh/graphic/stb_callback.cpp"
 "cyh/interop/c_object.cpp"

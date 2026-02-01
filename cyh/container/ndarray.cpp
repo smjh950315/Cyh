@@ -48,6 +48,15 @@ namespace cyh::container::details
 		}
 		return true;
 	}
+	
+	void array_data::resize(const vec<size_t>& _shape, size_t _typesize)
+	{
+		auto requiredBytes = cross(_shape) * _typesize;
+		if (requiredBytes > data.size())
+			data.resize(requiredBytes);
+		memset(data.data(), 0, requiredBytes);
+	}
+
 	void nditerator::copy_to_left(nditerator* l, const nditerator* r)
 	{
 		l->data = r->data;
@@ -57,7 +66,7 @@ namespace cyh::container::details
 		l->shape_r = r->shape_r;
 		l->typesize = r->typesize;
 	}
-	static void move_to_left(nditerator* l, nditerator* r)
+	void nditerator::move_to_left(nditerator* l, nditerator* r)
 	{
 		l->data = std::move(r->data);
 		l->dim = std::move(r->dim);
@@ -123,7 +132,7 @@ namespace cyh::container::details
 		move_to_left(this, &_other);
 		return *this;
 	}
-	nditerator::nditerator(const ref<array_data>& d, const vec<MyVec2<size_t>>& r, size_t ts)
+	nditerator::nditerator(const ref<array_data>& d, const vec<size_t>& dshape, const vec<MyVec2<size_t>>& r, size_t ts)
 	{
 		this->data = d; this->range = r;
 		for (const auto& _r : r)
@@ -131,9 +140,9 @@ namespace cyh::container::details
 			this->pos.push_back(_r.x);
 		}
 		this->dim = r.size();
-		for (size_t i = 0; i < d->shape.size(); ++i) {
+		for (size_t i = 0; i < dshape.size(); ++i) {
 			if (i != 0)
-				this->shape_r.push_back(d->shape[i]);
+				this->shape_r.push_back(dshape[i]);
 		}
 		this->shape_r.push_back(1);
 		this->typesize = ts;
@@ -181,25 +190,60 @@ namespace cyh::container::details
 namespace cyh::container
 {
 	using namespace details;
-	static void copy_to_left(ndarray* l, const ndarray* r) {
+	ndarray::ndarray(size_t _typesize, const std::type_info* _typeinfo) : m_typesize(_typesize), m_typeinfo(_typeinfo)
+	{
+	}
+	void ndarray::copy_to_left(ndarray* l, const ndarray* r) {
 		l->m_data = r->m_data;
 		l->m_range = r->m_range;
 		l->m_typesize = r->m_typesize;
+		l->m_typeinfo = r->m_typeinfo;
+		l->m_datashape = r->m_datashape;
 	}
-	static void move_to_left(ndarray* l, ndarray* r) {
+	void ndarray::move_to_left(ndarray* l, ndarray* r) {
 		l->m_data = std::move(r->m_data);
 		l->m_range = std::move(r->m_range);
-		l->m_typesize = std::move(r->m_typesize);
-		r->m_typesize = 1;
+		l->m_typesize = r->m_typesize;
+		l->m_typeinfo = r->m_typeinfo;
+		l->m_datashape = std::move(r->m_datashape);
 	}
-	ndarray::ndarray()
+	ndarray::iterator ndarray::begin()
+	{
+		return iterator(m_data, this->m_datashape, m_range, this->typesize());
+	}
+	ndarray::iterator ndarray::end()
+	{
+		auto it = iterator(m_data, this->m_datashape, m_range, this->typesize());
+		auto itItPos = it.pos.begin();
+		if (!m_range.size())
+			return ++it;
+		auto itRange = m_range.begin();
+		auto itRangeE = m_range.end();		
+		do {
+			(*itItPos) = itRange->y;
+			++itItPos;
+		} while (++itRange != itRangeE);
+		++it;
+		return it;
+	}
+	const ndarray::iterator ndarray::begin() const
+	{
+		return ((ndarray*)this)->begin();
+	}
+	const ndarray::iterator ndarray::end() const
+	{
+		return ((ndarray*)this)->end();
+	}
+
+	ndarray::ndarray() : m_typeinfo(&typeid(unsigned char)), m_typesize(1)
 	{
 	}
-	ndarray::ndarray(const ndarray& _other)
+
+	ndarray::ndarray(const ndarray& _other) : m_typeinfo(_other.m_typeinfo), m_typesize(_other.m_typesize)
 	{
 		copy_to_left(this, &_other);
 	}
-	ndarray::ndarray(ndarray&& _other) noexcept
+	ndarray::ndarray(ndarray&& _other) noexcept : m_typeinfo(_other.m_typeinfo), m_typesize(_other.m_typesize)
 	{
 		move_to_left(this, &_other);
 	}
@@ -213,12 +257,31 @@ namespace cyh::container
 		move_to_left(this, &_other);
 		return *this;
 	}
+	bool ndarray::is_initialized() const {
+		return !this->m_data.empty();
+	}
+	bool ndarray::is_full_range() const {
+		for (size_t i = 0; i < m_datashape.size(); ++i) {
+			if (m_range[i].x != 0 || m_range[i].y + 1 != m_datashape[i])
+				return false;
+		}
+		return true;
+	}
+	const std::type_info* ndarray::typeinfo() const
+	{
+		return this->m_typeinfo;
+	}
 	size_t ndarray::typesize() const {
-		return m_data ? this->m_typesize : 0;
+		return m_data ? this->m_typesize : 1;
 	}
 	size_t ndarray::dims() const {
-		return m_data ? m_data->shape.size() : 0;
+		return this->shape().size();
 	}
+	size_t ndarray::elements() const
+	{
+		return cross(this->shape());
+	}
+
 	vec<size_t> ndarray::shape() const {
 		if (this->m_data.empty())
 			return {};
@@ -237,8 +300,24 @@ namespace cyh::container
 		{
 			m_range.push_back({ size_t(), s - 1 });
 		}
+		m_datashape = _shape;
 	}
-	bool ndarray::crop(ndarray& out, const vec<size_t>& beg, const vec<size_t>& end)
+	bool ndarray::reshape(const vec<size_t>& _shape)
+	{
+		if (this->m_data.empty())
+			return false;	
+		if (!this->is_full_range())
+			return false;
+		if (this->elements() != details::cross(_shape))
+			return false;
+		this->m_datashape = _shape;
+		this->m_range.clear();
+		for (size_t i = 0; i < _shape.size(); ++i) {
+			this->m_range.push_back({ 0, _shape[i] - 1 });
+		}
+		return true;
+	}
+	bool ndarray::crop(ndarray& out, const vec<size_t>& beg, const vec<size_t>& end) const
 	{
 		if (beg.size() != end.size())
 			return false;
@@ -248,83 +327,104 @@ namespace cyh::container
 		auto myShape = shape();
 		vec<MyVec2<size_t>> outRange{};
 		for (size_t i = 0; i < d; ++i) {
-			auto myBegin = m_range[i].x;
+			auto myBegin = this->m_range[i].x;
 			auto l = myBegin + std::clamp(beg[i], size_t{}, myShape[i] - 1);
 			auto r = myBegin + std::clamp(end[i], size_t{}, myShape[i] - 1);
-			//if (l == r) return false;
 			outRange.push_back({ std::min(l, r), std::max(l, r) });
 		}
 		out.m_data = this->m_data;
 		out.m_range = outRange;
 		out.m_typesize = this->typesize();
+		out.m_typeinfo = this->typeinfo();
+		out.m_datashape = this->m_datashape;
 		return true;
 	}
-	ndarray ndarray::crop(const vec<size_t>& beg, const vec<size_t>& end)
+	ndarray ndarray::crop(const vec<size_t>& beg, const vec<size_t>& end) const
 	{
-		ndarray ret{};
+		ndarray ret{ this->typesize(), this->typeinfo() };
 		this->crop(ret, beg, end);
 		return ret;
 	}
-	ndarray::iterator ndarray::begin()
+	bool ndarray::clone(ndarray& out) const
 	{
-		return iterator(m_data, m_range, this->typesize());
+		out.m_typesize = this->typesize();
+		out.m_typeinfo = this->typeinfo();
+		out.resize(this->shape());
+		this->copy_to(out, nullptr);
+		return true;
 	}
-	ndarray::iterator ndarray::end()
+	ndarray ndarray::clone() const {
+		ndarray ret{ this->typesize(), this->typeinfo() };
+		clone(ret);
+		return ret;
+	}
+	ndarray ndarray::slice(size_t index) const
 	{
-		auto it = iterator(m_data, m_range, this->typesize());
-		auto itItPos = it.pos.begin();
-		auto itRange = m_range.begin();
-		auto itRangeE = m_range.end();
-		while (itRange != itRangeE)
-		{
-			(*itItPos) = itRange->y;
-			++itRange;
-			++itItPos;
+		std::vector<size_t> newRangeBeg, newRangeEnd;
+		newRangeBeg.reserve(m_range.size());
+		newRangeEnd.reserve(m_range.size());
+		for (size_t i = 0; i < m_range.size() - 1; ++i) {
+			newRangeBeg.push_back(0);
+			newRangeEnd.push_back(m_range[i].y);
 		}
-		++it;
-		return it;
+		newRangeBeg.push_back(index);
+		newRangeEnd.push_back(index);
+		return this->crop(newRangeBeg, newRangeEnd);
 	}
-	const ndarray::iterator ndarray::begin() const
+	void ndarray::operate_with_other(ndarray& _other, const std::function<void(void*, void*)>& _op)
 	{
-		return ((ndarray*)this)->begin();
-	}
-	const ndarray::iterator ndarray::end() const
-	{
-		return ((ndarray*)this)->end();
-	}
-	static void copy_data_to_left(void* l, void* r, size_t sz) 
-	{		
-		memcpy(l, r, sz);
-	}
-	void ndarray::copy_to(const ndarray& _other, func_op_data _convert)
-	{
-		auto opdataSize = std::min(this->typesize(), _other.typesize());
-		if (_convert)
-			this->operate_with_other(_other, _convert);
-		else 
-			this->operate_with_other(_other,
-									 [=](void* l, void* r)
-									 {
-										 copy_data_to_left(l, r, opdataSize);
-									 });
-	}
-	void ndarray::operate_with_other(const ndarray& _other, const std::function<void(void*, void*)>& _op) {
 		if (_op == nullptr)
 			return;
 		auto opdataSize = std::min(this->typesize(), _other.typesize());
 		if (opdataSize == 0) return;
+		if (!this->elements() || !_other.elements())
+			return;
 		auto itbegThis = this->begin();
 		auto itendThis = this->end();
 		auto itbegThat = _other.begin();
 		auto itendThat = _other.end();
-		while (itbegThis != itendThis && itbegThat != itendThat)
-		{
+		do {
 			auto& dataThis = *itbegThis;
 			auto& dataThat = *itbegThat;
-			_op(&dataThat, &dataThis);
-			++itbegThis;
-			++itbegThat;
-		}
+			_op(&dataThis, &dataThat);
+		} while (++itbegThis != itendThis && ++itbegThat != itendThat);
+	}
+	void ndarray::operate_with_other(const ndarray& _other, const std::function<void(void*, const void*)>& _op) {
+		operate_with_other(*(ndarray*)(&_other),
+						   [_op](void* l, void* r)
+						   {
+							   _op(l, r);
+						   });
+	}
+	void ndarray::operate_with_other(ndarray& _other, const std::function<void(const void*, void*)>& _op) const {
+		((ndarray*)this)->operate_with_other(*(ndarray*)(&_other),
+											 [_op](void* l, void* r)
+											 {
+												 _op(l, r);
+											 });
+	}
+	void ndarray::operate(const std::function<void(void*)>& _op)
+	{
+		if (!_op || !this->elements())
+			return;
+		auto itbegThis = this->begin();
+		auto itendThis = this->end();
+		do {
+			auto& dataThis = *itbegThis;
+			_op(&dataThis);
+		} while (++itbegThis != itendThis);
+	}
+	void ndarray::copy_to(ndarray& _other, func_op_to_data _convert) const
+	{
+		auto opdataSize = std::min(this->typesize(), _other.typesize());
+		if (_convert)
+			((ndarray*)this)->operate_with_other(_other, _convert);
+		else
+			((ndarray*)this)->operate_with_other(_other,
+												 [=](const void* l, void* r)
+												 {
+													 memcpy(r, l, opdataSize);
+												 });
 	}
 	static void print_child(ndarray::iterator& it, size_t* child_count, size_t current_layer, size_t last_layer, ndarray::func_print_data _func) {
 		for (size_t i = 0; i < child_count[current_layer]; ++i) {
@@ -343,7 +443,7 @@ namespace cyh::container
 			}			
 		}
 	}
-	void ndarray::print_format(func_print_data _print)
+	void ndarray::print_format(func_print_data _print) const
 	{
 		auto beg = this->begin();
 		auto _shape = this->shape();
